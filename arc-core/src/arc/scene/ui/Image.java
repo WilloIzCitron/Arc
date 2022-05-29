@@ -75,6 +75,11 @@ public class Image extends Element{
         setSize(getPrefWidth(), getPrefHeight());
     }
 
+    //from image url
+    public Image(String url){
+        this(new TextureRegionDrawable(new TextureRegion(new Texture(url))));
+    }
+
     @Override
     public void layout(){
         if(drawable == null) return;
