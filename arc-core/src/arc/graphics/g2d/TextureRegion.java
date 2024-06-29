@@ -2,7 +2,7 @@ package arc.graphics.g2d;
 
 import arc.*;
 import arc.graphics.*;
-import arc.graphics.g2d.TextureAtlas.AtlasRegion;
+import arc.graphics.g2d.TextureAtlas.*;
 
 /**
  * Defines a rectangular area of a texture. The coordinate system used has its origin in the upper left corner with the x-axis
@@ -17,6 +17,8 @@ public class TextureRegion{
     public float u, v, u2, v2;
     /** Read-only. Use setters to change. */
     public int width, height;
+
+    public float scale = 1.0f;
 
     /** Constructs a region with no texture and no coordinates defined. */
     public TextureRegion(){
@@ -132,6 +134,7 @@ public class TextureRegion{
     /** Sets the texture and coordinates to the specified region. */
     public void set(TextureRegion region){
         texture = region.texture;
+        scale = region.scale;
         u = region.u;
         v = region.v;
         u2 = region.u2;
@@ -143,6 +146,7 @@ public class TextureRegion{
     /** Sets the texture to that of the specified region and sets the coordinates relative to the specified region. */
     public void set(TextureRegion region, int x, int y, int width, int height){
         texture = region.texture;
+        scale = region.scale;
         set(region.getX() + x, region.getY() + y, width, height);
     }
 
@@ -241,6 +245,11 @@ public class TextureRegion{
         }
     }
 
+    /** @return x/y aspect ratio */
+    public float ratio(){
+        return (float)width / height;
+    }
+
     public boolean isFlipX(){
         return u > u2;
     }
@@ -297,6 +306,10 @@ public class TextureRegion{
         }
 
         return tiles;
+    }
+
+    public float scl(){
+        return scale * Draw.scl;
     }
 
     @Override

@@ -11,7 +11,7 @@ import java.util.concurrent.*;
 
 /** Utility class for making HTTP requests. */
 public class Http{
-    protected static ExecutorService exec = Threads.unboundedExecutor();
+    protected static ExecutorService exec = Threads.unboundedExecutor("HTTP", 1);
 
     /** @return a new HttpRequest that must be configured & submitted. */
     public static HttpRequest request(HttpMethod method, String url){
@@ -173,8 +173,6 @@ public class Http{
 
         /**The content as a stream to be used for a POST for example, to transmit custom data.*/
         public InputStream contentStream;
-        /**Length of the content stream.*/
-        public long contentLength;
 
         /**Sets whether 301 and 302 redirects are followed. By default true. Can't be changed in the web backend because this uses
          * XmlHttpRequests which always redirect.*/
@@ -232,9 +230,8 @@ public class Http{
             return this;
         }
 
-        public HttpRequest content(InputStream contentStream, long contentLength){
+        public HttpRequest content(InputStream contentStream){
             this.contentStream = contentStream;
-            this.contentLength = contentLength;
             return this;
         }
 

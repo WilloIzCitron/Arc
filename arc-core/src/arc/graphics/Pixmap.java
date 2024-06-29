@@ -98,16 +98,16 @@ public class Pixmap implements Disposable{
 
     /** Iterates through every position in this Pixmap. */
     public void each(Intc2 cons){
-        for(int x = 0; x < width; x++){
-            for(int y = 0; y < height; y++){
+        for(int y = 0; y < height; y++){
+            for(int x = 0; x < width; x++){
                 cons.get(x, y);
             }
         }
     }
 
     public void replace(IntIntf func){
-        for(int x = 0; x < width; x++){
-            for(int y = 0; y < height; y++){
+        for(int y = 0; y < height; y++){
+            for(int x = 0; x < width; x++){
                 setRaw(x, y, func.get(getRaw(x, y)));
             }
         }
@@ -143,8 +143,8 @@ public class Pixmap implements Disposable{
         Pixmap copy = new Pixmap(width, height);
 
         //TODO this can be optimized significantly by putting each line
-        for(int x = 0; x < width; x++){
-            for(int y = 0; y < height; y++){
+        for(int y = 0; y < height; y++){
+            for(int x = 0; x < width; x++){
                 copy.setRaw(x, height - 1 - y, getRaw(x, y));
             }
         }
@@ -156,8 +156,8 @@ public class Pixmap implements Disposable{
     public Pixmap flipX(){
         Pixmap copy = new Pixmap(width, height);
 
-        for(int x = 0; x < width; x++){
-            for(int y = 0; y < height; y++){
+        for(int y = 0; y < height; y++){
+            for(int x = 0; x < width; x++){
                 copy.set(width - 1 - x, y, getRaw(x, y));
             }
         }
@@ -175,8 +175,8 @@ public class Pixmap implements Disposable{
         Pixmap pixmap = copy();
 
         //TODO this messes with antialiasing?
-        for(int x = 0; x < width; x++){
-            for(int y = 0; y < height; y++){
+        for(int y = 0; y < height; y++){
+            for(int x = 0; x < width; x++){
                 if(getA(x, y) == 0){
                     boolean found = false;
                     outer:
@@ -198,49 +198,24 @@ public class Pixmap implements Disposable{
     }
 
     /** Draws a line between the given coordinates using the provided RGBA color. */
-    public void drawLine(int x, int y, int x2, int y2, int color){
-        int dy = y - y2;
-        int dx = x - x2;
-        int fraction, stepx, stepy;
+    public void drawLine(int x1, int y1, int x2, int y2, int color){
+        int x = x1, dx = Math.abs(x2 - x), sx = x < x2 ? 1 : -1;
+        int y = y1, dy = Math.abs(y2 - y), sy = y < y2 ? 1 : -1;
+        int e2, err = dx - dy;
 
-        if(dy < 0){
-            dy = -dy;
-            stepy = -1;
-        }else{
-            stepy = 1;
-        }
-        if(dx < 0){
-            dx = -dx;
-            stepx = -1;
-        }else{
-            stepx = 1;
-        }
-        dy <<= 1;
-        dx <<= 1;
+        while(true){
+            set(x, y, color);
+            if(x == x2 && y == y2) return;
 
-        set(x, y, color);
-
-        if(dx > dy){
-            fraction = dy - (dx >> 1);
-            while(x != x2){
-                if(fraction >= 0){
-                    y += stepy;
-                    fraction -= dx;
-                }
-                x += stepx;
-                fraction += dy;
-                set(x, y, color);
+            e2 = 2 * err;
+            if(e2 > -dy){
+                err = err - dy;
+                x = x + sx;
             }
-        }else{
-            fraction = dx - (dy >> 1);
-            while(y != y2){
-                if(fraction >= 0){
-                    x += stepx;
-                    fraction -= dy;
-                }
-                y += stepy;
-                fraction += dx;
-                set(x, y, color);
+
+            if(e2 < dx){
+                err = err + dx;
+                y = y + sy;
             }
         }
     }
@@ -378,6 +353,8 @@ public class Pixmap implements Disposable{
         draw(pixmap, srcx, srcy, srcWidth, srcHeight, dstx, dsty, dstWidth, dstHeight, filtering, false);
     }
 
+    public static float totalTime = 0f;
+
     /**
      * Draws an area from another Pixmap to this Pixmap. This will automatically scale and stretch the source image to the
      * specified target rectangle. Blending is currently unsupported for stretched/scaled pixmaps.
@@ -416,8 +393,41 @@ public class Pixmap implements Disposable{
                         setRaw(dx, dy, blend(pixmap.getRaw(sx, sy), getRaw(dx, dy)));
                     }
                 }
-            }else{
-                //TODO this can be optimized with scanlines, potentially
+            }else if(this.pixels != pixmap.pixels){ //make sure the buffers are different to prevent a crash
+                ByteBuffer pixels = this.pixels, otherPixels = pixmap.pixels;
+                int
+                startY = Math.max(dsty, 0),
+                endY = Math.min(dsty + Math.min(dstHeight, oheight), height),
+                startX = Math.max(dstx, 0),
+                endX = Math.min(dstx + Math.min(dstWidth, owidth), width),
+                offsetY = dsty - srcy,
+                scanX = Math.max(Math.max(srcx, -dstx), 0),
+                scanWidth = (endX - startX) * 4;
+
+                while(startY < endY){
+
+                    int offset = (startY * width + startX) * 4;
+                    int otherOffset = ((startY - offsetY) * owidth + scanX) * 4;
+
+                    pixels.position(offset);
+                    otherPixels.limit(otherOffset + scanWidth);
+                    otherPixels.position(otherOffset);
+
+                    pixels.put(otherPixels);
+
+                    //ideally I would use the method below, but it's Java 16 API (how has nobody needed to do this before then?)
+                    //pixels.put(
+                    //    (startY * width + startX) * 4, otherPixels,
+                    //    ((startY - offsetY) * owidth + scanX) * 4, scanWidth
+                    //);
+
+                    startY ++;
+                }
+
+                pixels.position(0);
+                otherPixels.position(0);
+                otherPixels.limit(otherPixels.capacity());
+            }else{ //drawing a pixmap onto itself is not a good idea, but it's better than crashing
                 for(; sy < srcy + srcHeight; sy++, dy++){
                     if(sy < 0 || dy < 0) continue;
                     if(sy >= oheight || dy >= height) break;
@@ -472,7 +482,7 @@ public class Pixmap implements Disposable{
                         int a = (int)((c1 & 0xff) * ta + (c2 & 0xff) * tb + (c3 & 0xff) * tc + (c4 & 0xff) * td) & 0xff;
                         int srccol = (r << 24) | (g << 16) | (b << 8) | a;
 
-                        setRaw(dx, dy, srccol);
+                        setRaw(dx, dy, !blending ? srccol : blend(srccol, getRaw(dx, dy)));
                     }
                 }
             }else{
@@ -493,7 +503,7 @@ public class Pixmap implements Disposable{
                         if(sx < 0 || dx < 0) continue;
                         if(sx >= owidth || dx >= width) break;
 
-                        setRaw(dx, dy, pixmap.getRaw(sx, sy));
+                        setRaw(dx, dy, !blending ? pixmap.getRaw(sx, sy) : blend(pixmap.getRaw(sx, sy), getRaw(dx, dy)));
                     }
                 }
             }
@@ -786,6 +796,11 @@ public class Pixmap implements Disposable{
             this.height = height;
             this.pixels = ByteBuffer.allocateDirect(width * height * 4);
         }
+    }
+
+    @Override
+    public String toString(){
+        return "Pixmap:" + width + "x" + height;
     }
 
     /**

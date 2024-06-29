@@ -1,15 +1,14 @@
 package arc.backend.robovm;
 
 import arc.*;
-import arc.Graphics;
 import arc.Graphics.Cursor.*;
+import arc.backend.robovm.custom.*;
 import arc.func.*;
 import arc.graphics.*;
 import arc.graphics.gl.*;
 import arc.math.*;
-import arc.struct.Seq;
+import arc.struct.*;
 import arc.util.*;
-import arc.backend.robovm.custom.*;
 import org.robovm.apple.coregraphics.*;
 import org.robovm.apple.foundation.*;
 import org.robovm.apple.glkit.*;
@@ -19,7 +18,6 @@ import org.robovm.objc.*;
 import org.robovm.objc.annotation.*;
 import org.robovm.rt.bro.annotation.*;
 
-import java.awt.*;
 import java.util.*;
 
 //lots of openGL stuff is deprecated, I don't care about it
@@ -62,8 +60,8 @@ public class IOSGraphics extends Graphics{
         this.config = config;
 
         IOSGraphicsDelegate gdel = new IOSGraphicsDelegate();
+        CGRect bounds = app.getBounds();
 
-        final CGRect bounds = app.getBounds();
         // setup view and OpenGL
         width = (int)bounds.getWidth();
         height = (int)bounds.getHeight();
@@ -120,7 +118,7 @@ public class IOSGraphics extends Graphics{
         this.app = app;
         this.input = input;
 
-        int r = 0, g = 0, b = 0, a = 0, depth = 0, stencil = 0, samples = 0;
+        int r, g, b, a, depth, stencil = 0, samples = 0;
         if(config.colorFormat == GLKViewDrawableColorFormat.RGB565){
             r = 5;
             g = 6;
@@ -146,8 +144,17 @@ public class IOSGraphics extends Graphics{
 
         String machineString = HWMachine.getMachineString();
         IOSDevice device = IOSDevice.getDevice(machineString);
-        if(device == null) Log.err(tag, "Machine ID: " + machineString + " not found, please report!");
-        int ppi = device != null ? device.ppi : 163;
+        if(device == null){
+            Log.err(tag, "Machine ID: " + machineString + " not found, please report!");
+        }else{
+            Log.info(tag, "Device: " + device.classifier);
+        }
+
+        int ppi =
+            device != null ? device.ppi :
+            UIDevice.getCurrentDevice().getUserInterfaceIdiom() == UIUserInterfaceIdiom.Pad ? 264 :
+            163;
+
         density = device != null ? device.ppi / 160f : scale;
         ppiX = ppi;
         ppiY = ppi;
@@ -280,7 +287,7 @@ public class IOSGraphics extends Graphics{
             insets[2] = (int)(edgeInsets.getTop() * view.getContentScaleFactor());
             insets[3] = (int)(edgeInsets.getBottom() * view.getContentScaleFactor());
 
-            Log.info("Insets: @", Arrays.toString(insets));
+            Log.info("[IOSApplication] Insets: @", Arrays.toString(insets));
         }
     }
 

@@ -14,12 +14,6 @@ import java.nio.*;
  * </p>
  *
  * <p>
- * Meshes are automatically managed. If the OpenGL context is lost all vertex buffer objects get invalidated and must be reloaded
- * when the context is recreated. This only happens on Android when a user switches to another application or receives an incoming
- * call. A managed Mesh will be reloaded automagically so you don't have to do this manually.
- * </p>
- *
- * <p>
  * A Mesh consists of vertices and optionally indices which specify which vertices define a triangle. Each vertex is composed of
  * attributes such as position, normal, color or texture coordinate. Note that not all of this attributes must be given, except
  * for position which is non-optional. Each attribute has an alias which is used when rendering a Mesh in OpenGL ES 2.0. The alias
@@ -34,8 +28,8 @@ public class Mesh implements Disposable{
     /** Do not modify. */
     public final VertexAttribute[] attributes;
 
-    public final VertexData vertices;
-    public final IndexData indices;
+    public VertexData vertices;
+    public IndexData indices;
 
     boolean autoBind = true;
 
@@ -72,7 +66,7 @@ public class Mesh implements Disposable{
             indices = new IndexArray(maxIndices);
         }else if(Core.gl30 != null){
             vertices = new VertexBufferObjectWithVAO(isStatic, maxVertices, this);
-            indices = new IndexBufferObjectSubData(isStatic, maxIndices);
+            indices = new IndexBufferObject(isStatic, maxIndices);
         }else{
             vertices = new VertexBufferObject(isStatic, maxVertices, this);
             indices = new IndexBufferObject(isStatic, maxIndices);
@@ -226,9 +220,7 @@ public class Mesh implements Disposable{
 
     /**
      * Sets whether to bind the underlying {@link VertexArray} or {@link VertexBufferObject} automatically on a call to one of the
-     * render methods. Usually you want to use autobind. Manual binding is an expert functionality. There is a driver bug on the
-     * MSM720xa chips that will fuck up memory if you manipulate the vertices and indices of a Mesh multiple times while it is
-     * bound. Keep this in mind.
+     * render methods. Usually you want to use autobind. Manual binding is an expert functionality.
      * @param autoBind whether to autobind meshes.
      */
     public void setAutoBind(boolean autoBind){

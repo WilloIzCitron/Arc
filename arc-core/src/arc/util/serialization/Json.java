@@ -547,6 +547,14 @@ public class Json{
                 writeObjectEnd();
                 return;
             }
+            if(value instanceof IntSeq){
+                writeArrayStart();
+                IntSeq array = (IntSeq)value;
+                for(int i = 0, n = array.size; i < n; i++)
+                    writeValue(array.get(i), Integer.class, null);
+                writeArrayEnd();
+                return;
+            }
             if(value instanceof arc.struct.Queue){
                 if(knownType != null && actualType != knownType && actualType != arc.struct.Queue.class)
                     throw new SerializationException("Serialization of a Queue other than the known type is not supported.\n"
@@ -602,6 +610,16 @@ public class Json{
                 for(ObjectIntMap.Entry entry : ((ObjectIntMap<?>)value).entries()){
                     writer.name(convertToString(entry.key));
                     writer.value(entry.value);
+                }
+                writeObjectEnd();
+                return;
+            }
+            if(value instanceof IntMap){
+                if(knownType == null) knownType = IntMap.class;
+                writeObjectStart(actualType, knownType);
+                for(IntMap.Entry entry : ((IntMap<?>)value).entries()){
+                    writer.name(String.valueOf(entry.key));
+                    writeValue(entry.value, elementType, null);
                 }
                 writeObjectEnd();
                 return;
@@ -1044,6 +1062,14 @@ public class Json{
 
                     return (T)result;
                 }
+                if(object instanceof IntMap){
+                    IntMap result = (IntMap)object;
+                    for(JsonValue child = jsonData.child; child != null; child = child.next){
+                        result.put(Integer.parseInt(child.name), readValue(elementType, null, child));
+                    }
+
+                    return (T)result;
+                }
                 if(object instanceof ObjectSet){
                     ObjectSet result = (ObjectSet)object;
                     for(JsonValue child = jsonData.getChild("values"); child != null; child = child.next)
@@ -1053,6 +1079,12 @@ public class Json{
                 if(object instanceof IntSet){
                     IntSet result = (IntSet)object;
                     for(JsonValue child = jsonData.getChild("values"); child != null; child = child.next)
+                        result.add(child.asInt());
+                    return (T)result;
+                }
+                if(object instanceof IntSeq){
+                    IntSeq result = (IntSeq)object;
+                    for(JsonValue child = jsonData.child; child != null; child = child.next)
                         result.add(child.asInt());
                     return (T)result;
                 }
@@ -1098,6 +1130,12 @@ public class Json{
                 Seq result = type == Seq.class ? new Seq() : (Seq)newInstance(type);
                 for(JsonValue child = jsonData.child; child != null; child = child.next)
                     result.add(readValue(elementType, null, child));
+                return (T)result;
+            }
+            if(IntSeq.class.isAssignableFrom(type)){
+                IntSeq result = type == IntSeq.class ? new IntSeq() : (IntSeq)newInstance(type);
+                for(JsonValue child = jsonData.child; child != null; child = child.next)
+                    result.add(child.asInt());
                 return (T)result;
             }
             if(ObjectSet.class.isAssignableFrom(type)){

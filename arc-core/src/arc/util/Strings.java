@@ -1,15 +1,18 @@
 package arc.util;
 
 import arc.graphics.*;
-import arc.math.*;
 import arc.struct.*;
 
 import java.io.*;
 import java.net.*;
 import java.nio.charset.*;
+import java.util.regex.*;
 
 public class Strings{
     private static StringBuilder tmp1 = new StringBuilder(), tmp2 = new StringBuilder();
+    private static Pattern
+        filenamePattern = Pattern.compile("[\0/\"<>|:*?\\\\]"),
+        reservedFilenamePattern = Pattern.compile("(CON|AUX|PRN|NUL|(COM[0-9])|(LPT[0-9]))((\\..*$)|$)", Pattern.CASE_INSENSITIVE);
 
     public static final Charset utf8 = Charset.forName("UTF-8");
 
@@ -198,6 +201,19 @@ public class Strings{
             }
         }
         return count;
+    }
+
+    /** Replaces non-safe filename characters with '_'. Handles reserved window file names. */
+    public static String sanitizeFilename(String str){
+        if(str.equals(".")){
+            return "_";
+        }else if(str.equals("..")){
+            return "__";
+        }else if(reservedFilenamePattern.matcher(str).matches()){
+            //turn things like con.msch -> _con.msch, which is no longer reserved
+            str = "_" + str;
+        }
+        return filenamePattern.matcher(str).replaceAll("_");
     }
 
     public static String encode(String str){
@@ -516,7 +532,7 @@ public class Strings{
             if(whole == Long.MIN_VALUE) return defaultValue;
             long power = parseLong(value, 10, e + 1, end, Long.MIN_VALUE);
             if(power == Long.MIN_VALUE) return defaultValue;
-            return whole * Mathf.pow(10, power) * sign;
+            return whole * Math.pow(10, power) * sign;
         }
 
         //parse as standard integer
@@ -560,7 +576,8 @@ public class Strings{
     }
 
     public static String autoFixed(float value, int max){
-        int precision = Math.abs((int)value - value) <= 0.0001f ? 0 : Math.abs((int)(value * 10) - value * 10) <= 0.0001f ? 1 : 2;
+        int precision = Math.abs((int)(value + 0.0001f) - value) <= 0.0001f ? 0 :
+                Math.abs((int)(value * 10 + 0.0001f) - value * 10) <= 0.0001f ? 1 : 2;
         return fixed(value, Math.min(precision, max));
     }
 
@@ -576,7 +593,7 @@ public class Strings{
         d = Math.abs(d);
         StringBuilder dec = tmp2;
         dec.setLength(0);
-        dec.append((int)(d * Math.pow(10, decimalPlaces) + 0.000001f));
+        dec.append((int)(float)(d * Math.pow(10, decimalPlaces) + 0.0001f));
 
         int len = dec.length();
         int decimalPosition = len - decimalPlaces;

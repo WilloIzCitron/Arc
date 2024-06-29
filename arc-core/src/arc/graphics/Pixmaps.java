@@ -8,16 +8,18 @@ import arc.struct.*;
 import arc.util.*;
 
 import java.nio.*;
+import java.util.*;
 
 /** Various pixmap utilities. */
 public class Pixmaps{
+    private static final int[] offsets = {1, 0, 1, 1, 0, 1, -1, 1, -1, 0, -1, -1, 0, -1, 1, -1};
     private static Pixmap drawPixmap;
     private static IntSeq tmpArray = new IntSeq();
 
     public static Pixmap noise(int w, int h){
         Pixmap out = new Pixmap(w, h);
-        for(int x = 0; x < w; x++){
-            for(int y = 0; y < h; y++){
+        for(int y = 0; y < h; y++){
+            for(int x = 0; x < w; x++){
                 out.set(x, y, Tmp.c1.rand());
             }
         }
@@ -48,8 +50,8 @@ public class Pixmaps{
     public static Pixmap blend(PixmapRegion source, PixmapRegion over, float alpha){
         Pixmap out = new Pixmap(source.width, source.height);
 
-        for(int x = 0; x < source.width; x++){
-            for(int y = 0; y < source.height; y++){
+        for(int y = 0; y < source.height; y++){
+            for(int x = 0; x < source.width; x++){
                 int c1 = source.getRaw(x, y);
                 int c2 = over.getRaw(x, y);
 
@@ -88,9 +90,9 @@ public class Pixmaps{
 
     public static Pixmap scale(Pixmap input, float scalex, float scaley){
         Pixmap pixmap = new Pixmap((int)(input.width * scalex), (int)(input.height * scaley));
-        for(int x = 0; x < pixmap.width; x++){
-            for(int y = 0; y < pixmap.height; y++){
-                pixmap.set(x, y, input.get((int)(x / scalex), (int)(y / scaley)));
+        for(int y = 0; y < pixmap.height; y++){
+            for(int x = 0; x < pixmap.width; x++){
+                pixmap.setRaw(x, y, input.getRaw((int)(x / scalex), (int)(y / scaley)));
             }
         }
         return pixmap;
@@ -99,8 +101,8 @@ public class Pixmaps{
     public static Pixmap outline(PixmapRegion region, Color color, int radius){
         int outlineColor = color.rgba8888();
         Pixmap out = region.crop();
-        for(int x = 0; x < region.width; x++){
-            for(int y = 0; y < region.height; y++){
+        for(int y = 0; y < region.height; y++){
+            for(int x = 0; x < region.width; x++){
 
                 if(region.getA(x, y) < 255){
                     boolean found = false;
@@ -127,8 +129,8 @@ public class Pixmaps{
         Pixmap pixmap = input.copy();
         int col = color.rgba();
 
-        for(int x = 0; x < pixmap.width; x++){
-            for(int y = 0; y < pixmap.height; y++){
+        for(int y = 0; y < pixmap.height; y++){
+            for(int x = 0; x < pixmap.width; x++){
                 if(input.empty(x, y) &&
                 ((!input.empty(x, y + 1) && y < pixmap.height - 1) || (!input.empty(x, y - 1) && y > 0) || (!input.empty(x - 1, y) && x > 0) || (!input.empty(x + 1, y) && x < pixmap.width - 1)))
                     pixmap.set(x, y, col);
@@ -173,8 +175,8 @@ public class Pixmaps{
         Vec2 vector = new Vec2();
         Pixmap pixmap = new Pixmap(input.height, input.width);
 
-        for(int x = 0; x < input.width; x++){
-            for(int y = 0; y < input.height; y++){
+        for(int y = 0; y < input.height; y++){
+            for(int x = 0; x < input.width; x++){
                 vector.set(x - input.width / 2f + 0.5f, y - input.height / 2f);
                 vector.rotate(-angle);
                 int px = (int)(vector.x + input.width / 2f + 0.01f);
@@ -195,7 +197,7 @@ public class Pixmaps{
         Color color = new Color(1, 1, 1, 1);
 
         for(int x = 0; x < width; x++){
-            color.fromHsv(x / (float)width, 1f, 1);
+            color.fromHsv(x / (float)width * 360f, 1f, 1);
             int rgba = color.rgba();
             for(int y = 0; y < height; y++){
                 pixmap.set(x, y, rgba);
@@ -241,10 +243,9 @@ public class Pixmaps{
     public static Pixmap bleed(Pixmap image){
         int w = image.width, h = image.height;
         ByteBuffer pixels = image.pixels;
-        int[] offsets = {1, 0, 1, 1, 0, 1, -1, 1, -1, 0, -1, -1, 0, -1, 1, -1};
 
-        for(int x = 0; x < w; x++){
-            for(int y = 0; y < h; y++){
+        for(int y = 0; y < h; y++){
+            for(int x = 0; x < w; x++){
                 if(image.empty(x, y)){
                     int r = 0, g = 0, b = 0, count = 0;
                     int pi = (x + y*w)*4;
@@ -273,6 +274,75 @@ public class Pixmaps{
         return image;
     }
 
+    public static void antialias(Pixmap pixmap){
+        Pixmap prev = pixmap.copy();
+
+        Color color = new Color();
+        Color sum = new Color();
+        Color suma = new Color();
+        int[] p = new int[9];
+
+        for(int y = 0; y < prev.height; y++){
+            for(int x = 0; x < prev.width; x++){
+                int A = prev.get(x - 1, y + 1),
+                B = prev.get(x, y + 1),
+                C = prev.get(x + 1, y + 1),
+                D = prev.get(x - 1, y),
+                E = prev.get(x, y),
+                F = prev.get(x + 1, y),
+                G = prev.get(x - 1, y - 1),
+                H = prev.get(x, y - 1),
+                I = prev.get(x + 1, y - 1);
+
+                Arrays.fill(p, E);
+
+                if(D == B && D != H && B != F) p[0] = D;
+                if((D == B && D != H && B != F && E != C) || (B == F && B != D && F != H && E != A)) p[1] = B;
+                if(B == F && B != D && F != H) p[2] = F;
+                if((H == D && H != F && D != B && E != A) || (D == B && D != H && B != F && E != G)) p[3] = D;
+                if((B == F && B != D && F != H && E != I) || (F == H && F != B && H != D && E != C)) p[5] = F;
+                if(H == D && H != F && D != B) p[6] = D;
+                if((F == H && F != B && H != D && E != G) || (H == D && H != F && D != B && E != I)) p[7] = H;
+                if(F == H && F != B && H != D) p[8] = F;
+
+                suma.set(0);
+
+                for(int val : p){
+                    color.rgba8888(val);
+                    color.premultiplyAlpha();
+                    suma.r += color.r;
+                    suma.g += color.g;
+                    suma.b += color.b;
+                    suma.a += color.a;
+                }
+
+                float fm = suma.a <= 0.001f ? 0f : (1f / suma.a);
+                suma.mul(fm, fm, fm, fm);
+
+                float total = 0;
+                sum.set(0);
+
+                for(int val : p){
+                    color.rgba8888(val);
+                    float a = color.a;
+                    color.lerp(suma, (1f - a));
+                    sum.r += color.r;
+                    sum.g += color.g;
+                    sum.b += color.b;
+                    sum.a += a;
+                    total += 1f;
+                }
+
+                fm = (1f / total);
+                sum.mul(fm, fm, fm, fm);
+                pixmap.setRaw(x, y, sum.rgba8888());
+                sum.set(0);
+            }
+        }
+
+        prev.dispose();
+    }
+
     /**
      * Applies alpha bleeding to the target pixmap.
      * @return the input pixmap with its pixels modified.
@@ -280,8 +350,6 @@ public class Pixmaps{
     public static Pixmap bleed(Pixmap image, int maxIterations){
         int total = image.width * image.height;
         ByteBuffer pixels = image.pixels;
-
-        int[] offsets = {1, 0, 1, 1, 0, 1, -1, 1, -1, 0, -1, -1, 0, -1, 1, -1};
 
         boolean[] data = new boolean[total];
         int[] pending = new int[total];

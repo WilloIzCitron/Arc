@@ -250,6 +250,15 @@ public class Seq<T> implements Iterable<T>, Eachable<T>{
         return result;
     }
 
+    public boolean allMatch(Boolf<T> predicate){
+        for(int i = 0; i < size; i++){
+            if(!predicate.get(items[i])){
+                return false;
+            }
+        }
+        return true;
+    }
+
     public boolean contains(Boolf<T> predicate){
         for(int i = 0; i < size; i++){
             if(predicate.get(items[i])){
@@ -862,7 +871,7 @@ public class Seq<T> implements Iterable<T>, Eachable<T>{
     }
 
     /** Removes everything that does not match this predicate. */
-    public Seq<T> filter(Boolf<T> predicate){
+    public Seq<T> retainAll(Boolf<T> predicate){
         return removeAll(e -> !predicate.get(e));
     }
 

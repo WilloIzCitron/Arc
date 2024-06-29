@@ -1,7 +1,6 @@
-
-
 package arc.net;
 
+import arc.math.*;
 import arc.net.FrameworkMessage.*;
 import arc.struct.*;
 import arc.util.*;
@@ -25,10 +24,10 @@ public class Server implements EndPoint{
     private ServerSocketChannel serverChannel;
     private UdpConnection udp;
     private Connection[] connections = {};
+    private ObjectMap<InetSocketAddress, Connection> udpAddressToConnection = new ObjectMap<>();
     private IntMap<Connection> pendingConnections = new IntMap<>();
     NetListener[] listeners = {};
     private Object listenerLock = new Object();
-    private int nextConnectionID = 1;
     private volatile boolean shutdown;
     private final Object updateLock = new Object();
     private Thread updateThread;
@@ -36,6 +35,7 @@ public class Server implements EndPoint{
     protected InetAddress multicastGroup;
     protected DiscoveryReceiver discoveryReceiver;
     protected ServerDiscoveryHandler discoveryHandler;
+    private ServerConnectFilter connectFilter;
 
     private NetListener dispatchListener = new NetListener(){
         public void connected(Connection connection){
@@ -113,6 +113,14 @@ public class Server implements EndPoint{
 
     public void setDiscoveryHandler(ServerDiscoveryHandler newDiscoveryHandler){
         discoveryHandler = newDiscoveryHandler;
+    }
+
+    public void setConnectFilter(ServerConnectFilter connectFilter){
+        this.connectFilter = connectFilter;
+    }
+
+    public ServerConnectFilter getConnectFilter(){
+        return connectFilter;
     }
 
     /**
@@ -266,19 +274,13 @@ public class Server implements EndPoint{
                         if(fromAddress == null)
                             continue;
 
-                        Connection[] connections = this.connections;
-                        for(Connection connection : connections){
-                            if(fromAddress.equals(connection.udpRemoteAddress)){
-                                fromConnection = connection;
-                                break;
-                            }
-                        }
+                        fromConnection = udpAddressToConnection.get(fromAddress);
 
                         Object object;
                         try{
                             object = udp.readObject();
                         }catch(ArcNetException ex){
-                            ArcNet.handleError(new ArcNetException("Error reading UDP from connection: " + (fromConnection == null ? fromAddress : fromAddress), ex));
+                            ArcNet.handleError(new ArcNetException("Error reading UDP from connection: " + fromAddress, ex));
                             continue;
                         }
 
@@ -370,6 +372,15 @@ public class Server implements EndPoint{
     }
 
     private void acceptOperation(SocketChannel socketChannel){
+        if(connectFilter != null){
+            try{
+                if(!connectFilter.accept(((InetSocketAddress)socketChannel.getRemoteAddress()).getAddress().getHostAddress())){
+                    socketChannel.close();
+                    return;
+                }
+            }catch(IOException ignored){}
+        }
+
         Connection connection = newConnection();
         connection.initialize(serializer,
         writeBufferSize, objectBufferSize);
@@ -378,13 +389,10 @@ public class Server implements EndPoint{
         if(udp != null)
             connection.udp = udp;
         try{
-            SelectionKey selectionKey = connection.tcp.accept(selector,
-            socketChannel);
+            SelectionKey selectionKey = connection.tcp.accept(selector, socketChannel);
             selectionKey.attach(connection);
 
-            int id = nextConnectionID++;
-            if(nextConnectionID == -1)
-                nextConnectionID = 1;
+            int id = generateId();
             connection.id = id;
             connection.setConnected(true);
             connection.addListener(dispatchListener);
@@ -405,6 +413,15 @@ public class Server implements EndPoint{
         }
     }
 
+    private int generateId(){
+        int[] id = {0}; //java lambda as just amazing aren't they????
+        Rand rand = new Rand(); //not really concerned about allocating an object with two longs
+        do{
+            id[0] = rand.nextInt();
+        }while(pendingConnections.containsKey(id[0]) || Structs.contains(connections, c -> c.id == id[0]));
+        return id[0];
+    }
+
     /**
      * Allows the connections used by the server to be subclassed. This can be
      * useful for storage per connection without an additional lookup.
@@ -418,6 +435,10 @@ public class Server implements EndPoint{
         newConnections[0] = connection;
         System.arraycopy(connections, 0, newConnections, 1, connections.length);
         connections = newConnections;
+
+        if(connection.udpRemoteAddress != null){
+            udpAddressToConnection.put(connection.udpRemoteAddress, connection);
+        }
     }
 
     void removeConnection(Connection connection){
@@ -426,6 +447,9 @@ public class Server implements EndPoint{
         connections = temp.toArray(new Connection[0]);
 
         pendingConnections.remove(connection.id);
+        if(connection.udpRemoteAddress != null){
+            udpAddressToConnection.remove(connection.udpRemoteAddress);
+        }
     }
 
     // BOZO - Provide mechanism for sending to multiple clients without
@@ -634,4 +658,7 @@ public class Server implements EndPoint{
         }
     }
 
+    public interface ServerConnectFilter{
+        boolean accept(String address);
+    }
 }
