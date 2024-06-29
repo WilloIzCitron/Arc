@@ -17,7 +17,7 @@ import arc.util.pooling.*;
 
 import static arc.util.Align.*;
 
-public class Element{
+public abstract class Element{
     public final Color color = new Color(1, 1, 1, 1);
     public float originX, originY, scaleX = 1, scaleY = 1, rotation;
     public String name;
@@ -1014,4 +1014,6 @@ public class Element{
         }
         return name;
     }
+
+    public abstract void draw(Batch batch, float parentAlpha);
 }

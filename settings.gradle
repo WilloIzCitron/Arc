@@ -13,6 +13,7 @@ include ":extensions:tiled"
 include ":extensions:discord"
 include ":extensions:profiling"
 include ":extensions:filedialogs"
+include ":extensions:video"
 
 include ":backends"
 include ":backends:backend-android"
