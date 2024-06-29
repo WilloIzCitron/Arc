@@ -1014,6 +1014,4 @@ public class Element{
         }
         return name;
     }
-
-    public abstract void draw(Batch batch, float parentAlpha);
 }

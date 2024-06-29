@@ -18,12 +18,12 @@ package arc.video.scene;
 
 import arc.graphics.Color;
 import arc.graphics.Texture;
-import arc.graphics.g2d.Batch;
 import arc.scene.Element;
 import arc.util.ArcRuntimeException;
 import arc.util.Reflect;
 import arc.video.VideoPlayer;
 
+import static arc.Core.batch;
 import static arc.graphics.g2d.Draw.getColor;
 
 /** A simple actor that allows you to integrate a video in a 2D scene.
@@ -44,13 +44,13 @@ public class VideoElement extends Element {
 	private final VideoPlayer player;
 
 	@Override
-	public void act (float delta) {
+	public void act(float delta) {
 		super.act(delta);
 		player.update();
 	}
 
 	@Override
-	public void draw (Batch batch, float parentAlpha) {
+	public void draw() {
 		Texture texture = player.getTexture();
 		if (texture == null) return;
 		Color color = getColor();
