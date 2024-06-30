@@ -1,3 +1,5 @@
+import com.badlogic.gdx.jnigen.gradle.JnigenExtension
+
 apply plugin: "java-library"
 
 targetCompatibility = 1.8
@@ -113,40 +115,40 @@ jnigen {
         return libraries
     }
 
-    add(Windows, x32) {
+    add(JnigenExtension.Windows, JnigenExtension.x32) {
         headerDirs += "../FFmpeg/build-windows32/"
         cppFlags += " -DWIN32 "
         libraries += genLibs("windows32") + " -lbcrypt -lws2_32"
     }
-    add(Windows, x64) {
+    add(JnigenExtension.Windows, JnigenExtension.x64) {
         headerDirs += "../FFmpeg/build-windows64/"
         cppFlags += " -DWIN32 "
         libraries += genLibs("windows64") + " -lbcrypt -lws2_32"
     }
-    add(Linux, x64) {
+    add(JnigenExtension.Linux, JnigenExtension.x64) {
         headerDirs += "../FFmpeg/build-linux64/"
         libraries += genLibs("linux64")
         compilerPrefix = checkCrossPrefix('x86_64-linux-gnu')
         linkerFlags += " -Wl,-Bsymbolic "
     }
-    add(Linux, x32, ARM) {
+    add(JnigenExtension.Linux, JnigenExtension.x32, JnigenExtension.ARM) {
         headerDirs += "../FFmpeg/build-linuxarm32/"
         libraries += genLibs("linuxarm32")
         linkerFlags += " -Wl,-Bsymbolic "
     }
-    add(Linux, x64, ARM) {
+    add(JnigenExtension.Linux, JnigenExtension.x64, JnigenExtension.ARM) {
         headerDirs += "../FFmpeg/build-linuxarm64/"
         libraries += genLibs("linuxarm64")
         linkerFlags += " -Wl,-Bsymbolic "
     }
-    add(MacOsX, x64) {
+    add(JnigenExtension.MacOsX, JnigenExtension.x64) {
         headerDirs += "../FFmpeg/build-macos64/"
         libraries += genLibs("macos64") + " -liconv -lbz2 -lz -framework CoreFoundation -framework CoreVideo"
         cFlags += " -mmacosx-version-min=10.11"
         cppFlags += " -mmacosx-version-min=10.11"
         linkerFlags += " -mmacosx-version-min=10.11"
     }
-    add(MacOsX, x64, ARM) {
+    add(JnigenExtension.MacOsX, JnigenExtension.x64, JnigenExtension.ARM) {
         headerDirs += "../FFmpeg/build-macosarm64/"
         libraries += genLibs("macosarm64") + " -liconv -lbz2 -lz -framework CoreFoundation -framework CoreVideo"
         cFlags += " -mmacosx-version-min=10.11"

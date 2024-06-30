@@ -54,20 +54,18 @@ public class VideoPlayerCreator {
 
 		if (type == ApplicationType.android) {
 			if (Core.app.getVersion() >= 12) {
-				className = "com.badlogic.gdx.video.VideoPlayerAndroid";
+				className = "arc.video.VideoPlayerAndroid";
 			} else {
 				Log.infoTag("Core-Video", "VideoPlayer can't be used on android < API level 12");
 			}
 		} else if (type == ApplicationType.iOS) {
 			if (Core.app.getVersion() >= 15) {
-				className = "com.badlogic.gdx.video.VideoPlayerIos";
+				className = "arc.video.VideoPlayerIos";
 			} else {
 				Log.infoTag("Core-Video", "VideoPlayer can't be used on iOS < 15");
 			}
 		} else if (type == ApplicationType.desktop) {
-			className = "com.badlogic.gdx.video.VideoPlayerDesktop";
-		} else if (type == ApplicationType.web) {
-			className = "com.badlogic.gdx.video.VideoPlayerGwt";
+			className = "arc.video.VideoPlayerDesktop";
 		} else {
 			Log.infoTag("Core-Video", "Platform is not supported by the Core Video Extension");
 		}
