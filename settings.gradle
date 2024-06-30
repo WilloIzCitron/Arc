@@ -14,6 +14,7 @@ include ":extensions:discord"
 include ":extensions:profiling"
 include ":extensions:filedialogs"
 include ":extensions:video"
+include ":extensions:video:desktop"
 
 include ":backends"
 include ":backends:backend-android"
